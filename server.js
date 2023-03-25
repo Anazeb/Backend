@@ -3,6 +3,9 @@ const app = express()
 const jwt = require('jsonwebtoken')
 require('dotenv').config()
 app.set('view-engine, ejs')
+const db = require('./database')
+
+db.init()
 
 app.use(express.urlencoded({ extended: false }))
 app.use(express.json())
@@ -23,17 +26,18 @@ app.post('/identify', (req, res) => {
 })
 
 app.get('/identify', (req, res) => {
-  res.render('Identify.ejs')
+  console.log("anam")
+  res.render('identify.ejs')
 })
 
 function authenticateToken(req, res, next) {
   if (currentKey == '') {
-    res.redirect("/identify")
+    res.redirect("identify.ejs")
   }
   else if (jwt.verify(currentKey, process.env.ACCESS_TOEN_SECRET)) {
     next()
   } else {
-    res.redirect("/identify")
+    res.redirect("identify.ejs")
   }
 }
 
