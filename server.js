@@ -103,7 +103,7 @@ app.post('/identify', async (req, res) => {
       console.log(e.message);
       console.log(e.stack);
     });
-    // res.render('identify.ejs')
+
   }
   console.log("here")
   if (userNameExists == true) {
@@ -121,7 +121,7 @@ app.post('/identify', async (req, res) => {
         // var token = jwt.sign(userName, process.env.TOKEN)
         console.log(userName)
         console.log(process.env.TOKEN)
-        const token = jwt.sign(userName, process.env.TOKEN)
+        const token = jwt.sign({ 'username': userName, 'role': role }, process.env.TOKEN)
         console.log("after sign")
 
         const cookieOptions = {
@@ -172,10 +172,10 @@ function authorizeRole(roles) {
 
   return async (req, res, next) => {
     console.log(roles)
-    const userRole = req.query.userRole
-    console.log(req.query)
-    console.log(req.params)
-    if (roles.includes(userRole)) {
+    const token = req.cookies.jwt;
+    const dcryptToken = jwt.verify(token, process.env.TOKEN);
+    console.log(dcryptToken.role)
+    if (roles.includes(dcryptToken.role)) {
       next()
     } else {
       return res.status(401).render('identify.ejs')
@@ -241,54 +241,48 @@ app.get('/register', (req, res) => {
   res.render('register.ejs')
 })
 
-app.get('/users/:userid', authorizeToken, async (req, res) => {
-  console.log(req.params)
-  console.log(req.cookies)
-  console.log("yayyyyyyyyyyyyyyyyyyy")
+app.get('/users/:userid', authorizeRole(['student', 'teacher', 'admin']), async (req, res) => {
   const token = req.cookies.jwt;
   const dcryptToken = jwt.verify(token, process.env.TOKEN);
   console.log(dcryptToken)
-  const user = await db.getName(dcryptToken)
+  const user = await db.getName(dcryptToken.username)
   console.log(user)
-
-  if (req.params.userid !== user[0].name) {
-    return res.sendStatus(401)
-  }
-  if (user[0].role === 'student')
-    console.log("student 2")
-  res.render('student2.ejs', { 'username': user[0].name })
-})
-
-app.get('/teacher', authorizeRole(["admin", "teacher"]), async (req, res) => {
-  res.render('/teacher.ejs')
-})
-
-app.get('/admin', authorizeToken, async (req, res) => {
-  console.log(req.params)
-  console.log(req.cookies)
-  console.log("yayyyyyyyyyyyyyyyyyyy")
-  const token = req.cookies.jwt;
-  const dcryptToken = jwt.verify(token, process.env.TOKEN);
-  console.log(dcryptToken)
-  const user = await db.getName(dcryptToken)
-  console.log(user)
-  console.log(!user.length)
   if (!user.length) {
+    res.sendStatus(400)
+  }
+  else if (dcryptToken.role == 'teacher' || dcryptToken.role == 'admin') {
+    const checkUser = await db.getName(req.params.userid)
+    if (checkUser.length == 0) {
+      console.log("No user")
+      res.send('No User found')
+    }
+    else {
+      console.log("user found")
+      res.render('student2.ejs', { 'username': req.params.userid })
+    }
+  }
+  else if (req.params.userid !== user[0].name) {
+    console.log("user comparison")
     return res.sendStatus(401)
   }
+  else if (user[0].role === 'student') {
+    console.log("student 2")
+    res.render('student2.ejs', { 'username': user[0].name })
+  }
+})
 
-  if ("admin" !== user[0].name) {
-    return res.sendStatus(401)
-  }
-  if (user[0].role === 'admin') {
-    console.log("admin")
-    res.render('admin.ejs', { 'username': user[0].name })
-  }
-  else {
-    return res.sendStatus(401)
-  }
 
-  // res.render('admin.ejs')
+app.get('/teacher', authorizeRole(['teacher', 'admin']), async (req, res) => {
+  res.render('teacher.ejs')
+})
+
+app.get('/admin', authorizeRole(['admin']), async (req, res) => {
+
+
+  const studentData = await db.getRole()
+  console.log(studentData)
+  res.render('admin.ejs', { 'users': studentData })
+
 })
 
 app.listen(8000)

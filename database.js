@@ -83,6 +83,28 @@ const addUserInfo = (username, password, role) => {
 
 }
 
+function getRole() {
+  return new Promise((resolve, reject) => {
 
-module.exports = { init, getName, addUserInfo, insertData }
+    db.all('SELECT * FROM users WHERE role = ?', ['student'], (err, result) => {
+      if (err) {
+        console.log(err)
+        reject(err)
+      }
+      else {
+        console.log(result)
+        resolve(result)
+
+      }
+    })
+
+  }
+
+  )
+
+
+}
+
+
+module.exports = { init, getName, addUserInfo, insertData, getRole }
 
