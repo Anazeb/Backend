@@ -8,9 +8,6 @@ app.set('view-engine, ejs')
 const db = require('./database')
 const fs = require('fs')
 
-
-
-//reading the data from JSON
 function readJson() {
   return new Promise((res, rej) => {
     fs.readFile('data.json', async (err, data) => {
@@ -33,7 +30,7 @@ async function populateDatabase() {
     let name = element.name
     let password = element.password
     encryptedpass = await bcrypt.hash(password, 10)
-    console.log(encryptedpass)
+
     db.insertData(role, name, encryptedpass)
 
   });
@@ -55,26 +52,12 @@ function getCookie() {
   return decryptedToken
 }
 
-function postCookie(username) {
-  // const token = jwt.sign(username, process.env.TOKEN)
-
-
-  // const cookieOptions = {
-  //   httpOnly: true, // Set cookie to httpOnly it can only be accessed by the server and not by client-side scripts. 
-  //   maxAge: 86400000 // Set cookie to expire after 1 day (in milliseconds)
-  // };
-
-  // res.cookie("jwt", token, cookieOptions); // Send JWT in a cookie
-  // res.
-}
-
 
 app.get('/', (req, res) => {
   res.redirect('/identify')
   getCookie(req)
 
 })
-
 
 
 app.post('/identify', async (req, res) => {
@@ -95,8 +78,6 @@ app.post('/identify', async (req, res) => {
         password = results[0]['password']
         userId = results[0]['userID']
         role = results[0]['role']
-        console.log(password)
-
       }
       return results
     }).catch(function (e) {
@@ -108,42 +89,33 @@ app.post('/identify', async (req, res) => {
   console.log("here")
   if (userNameExists == true) {
     try {
-      console.log(req.body.password)
+
       encryptedpass = await bcrypt.hash(req.body.password, 10)
-      console.log(encryptedpass)
+
     } catch {
       console.log("error")
     }
 
     try {
       if (await bcrypt.compare(req.body.password, password)) {
-        console.log("teet")
-        // var token = jwt.sign(userName, process.env.TOKEN)
-        console.log(userName)
-        console.log(process.env.TOKEN)
+
         const token = jwt.sign({ 'username': userName, 'role': role }, process.env.TOKEN)
-        console.log("after sign")
 
         const cookieOptions = {
-          httpOnly: true, // Set cookie to httpOnly it can only be accessed by the server and not by client-side scripts. 
-          maxAge: 86400000 // Set cookie to expire after 1 day (in milliseconds)
+          httpOnly: true,
+          maxAge: 86400000
         };
-        console.log("before jwt")
         res.cookie("jwt", token, cookieOptions); // Send JWT in a cookie
-        console.log("after jwt")
         res.status(200)
-        console.log(role)
         if (role === 'student') {
-          res.redirect('/users/' + userName + "/?userRole=" + role)
+          res.redirect('/users/' + userName)
         }
         else if (role === 'admin') {
-          console.log("inside")
           res.redirect('/admin')
         } else if (role === 'teacher') {
           res.redirect('/teacher')
         } else {
           res.sendStatus(401).redirect('/identify')
-          console.log("error. No such role exist")
         }
 
 
@@ -171,10 +143,9 @@ app.get('/identify', (req, res) => {
 function authorizeRole(roles) {
 
   return async (req, res, next) => {
-    console.log(roles)
     const token = req.cookies.jwt;
     const dcryptToken = jwt.verify(token, process.env.TOKEN);
-    console.log(dcryptToken.role)
+
     if (roles.includes(dcryptToken.role)) {
       next()
     } else {
@@ -182,7 +153,6 @@ function authorizeRole(roles) {
     }
   }
 }
-
 
 function authenticateToken(req, res, next) {
 
@@ -217,16 +187,11 @@ app.get('/granted', authenticateToken, (req, res) => {
 app.post('/register', async (req, res) => {
 
   if (req.method == 'POST') {
-    encryptedpass = await bcrypt.hash("12345", 10)
-    console.log(encryptedpass)
-    encryptedpass = await bcrypt.hash("12345", 10)
-    console.log(encryptedpass)
 
     if (req.body.password != '' && req.body.userId != '' && req.body.role != '') {
       try {
         dbEncryption = await bcrypt.hash(req.body.password, 10)
-        console.log(req.body.password)
-        console.log(dbEncryption)
+
         db.addUserInfo(req.body.userId, dbEncryption, req.body.role);
         res.render("identify.ejs")
       } catch {
@@ -244,29 +209,27 @@ app.get('/register', (req, res) => {
 app.get('/users/:userid', authorizeRole(['student', 'teacher', 'admin']), async (req, res) => {
   const token = req.cookies.jwt;
   const dcryptToken = jwt.verify(token, process.env.TOKEN);
-  console.log(dcryptToken)
   const user = await db.getName(dcryptToken.username)
-  console.log(user)
   if (!user.length) {
     res.sendStatus(400)
   }
   else if (dcryptToken.role == 'teacher' || dcryptToken.role == 'admin') {
     const checkUser = await db.getName(req.params.userid)
     if (checkUser.length == 0) {
-      console.log("No user")
       res.send('No User found')
     }
+    else if (checkUser[0].role == 'teacher' || checkUser[0].role == 'admin') {
+      res.send('No User found')
+
+    }
     else {
-      console.log("user found")
       res.render('student2.ejs', { 'username': req.params.userid })
     }
   }
   else if (req.params.userid !== user[0].name) {
-    console.log("user comparison")
     return res.sendStatus(401)
   }
   else if (user[0].role === 'student') {
-    console.log("student 2")
     res.render('student2.ejs', { 'username': user[0].name })
   }
 })
@@ -280,9 +243,9 @@ app.get('/admin', authorizeRole(['admin']), async (req, res) => {
 
 
   const studentData = await db.getRole()
-  console.log(studentData)
   res.render('admin.ejs', { 'users': studentData })
 
 })
+
 
 app.listen(8000)

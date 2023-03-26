@@ -6,10 +6,7 @@ const init = () => {
 
   db.serialize(() => {
     db.run('CREATE TABLE users (userID INTEGER PRIMARY KEY AUTOINCREMENT, role TEXT, name TEXT, password TEXT)')
-    // 
-    // db.run("INSERT INTO users ('role', 'name', 'password') VALUES ('teacher', 'Hannah', '123password')")
-    // db.run("INSERT INTO users ('role', 'name', 'password') VALUES ('admin', 'admin', 'admin')")
-    // db.run("INSERT INTO users ('role', 'name', 'password') VALUES ('student', 'Abbe', 'password123')")
+
   })
 
   db.all('SELECT * FROM users', (err, result) => {
